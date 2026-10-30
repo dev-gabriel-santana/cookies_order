@@ -6,6 +6,8 @@ const PRECO = { nutella: 15, tradicional: 12 };
 const calcTotal = (nutella, tradicional, taxa) =>
   nutella * PRECO.nutella + tradicional * PRECO.tradicional + taxa;
 const orderTotal = o => calcTotal(o.nutella, o.tradicional, o.taxa);
+const fmtNum = n => String(n).padStart(2, '0');
+const statusClass = s => 'status-' + s.toLowerCase().replace(/\s+/g, '-');
 
 let state = load();
 let editingId = null;
@@ -13,9 +15,15 @@ let editingId = null;
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved && saved.stock && Array.isArray(saved.orders)) return saved;
+    if (saved && saved.stock && Array.isArray(saved.orders)) {
+      // Migra pedidos salvos antes da numeração existir.
+      let next = Math.max(0, ...saved.orders.map(o => o.numero || 0)) + 1;
+      for (const o of saved.orders) if (!o.numero) o.numero = next++;
+      saved.nextNumber = Math.max(saved.nextNumber || 0, next);
+      return saved;
+    }
   } catch (e) { /* dados corrompidos: começa do zero */ }
-  return { stock: { nutella: 0, tradicional: 0 }, orders: [] };
+  return { stock: { nutella: 0, tradicional: 0 }, orders: [], nextNumber: 1 };
 }
 
 function save() {
@@ -42,7 +50,7 @@ function render() {
   if (!state.orders.length) {
     const tr = document.createElement('tr');
     const td = document.createElement('td');
-    td.colSpan = 8;
+    td.colSpan = 9;
     td.className = 'empty';
     td.textContent = 'Nenhum pedido lançado.';
     tr.append(td);
@@ -68,7 +76,7 @@ for (const id of ['qtd-nutella', 'qtd-tradicional', 'taxa']) $(id).addEventListe
 let messageId = null;
 
 function buildMessage(o) {
-  const lines = [`Pedido de ${o.nome}`, `Endereço: ${o.endereco}`, '', 'Itens:'];
+  const lines = [`Pedido #${fmtNum(o.numero)} - ${o.nome}`, `Endereço: ${o.endereco}`, '', 'Itens:'];
   if (o.nutella) lines.push(`- ${o.nutella}x Cookie Nutella (${brl.format(PRECO.nutella)} cada): ${brl.format(o.nutella * PRECO.nutella)}`);
   if (o.tradicional) lines.push(`- ${o.tradicional}x Cookie Tradicional (${brl.format(PRECO.tradicional)} cada): ${brl.format(o.tradicional * PRECO.tradicional)}`);
   lines.push('', `Taxa de entrega: ${brl.format(o.taxa)}`, `Total: ${brl.format(orderTotal(o))}`);
@@ -114,6 +122,7 @@ function orderRow(order) {
   const tr = document.createElement('tr');
   if (!isActive(order)) tr.className = 'cancelado';
   tr.append(
+    cell('#' + fmtNum(order.numero), 'id'),
     cell(order.nome),
     cell(order.endereco),
     cell(order.nutella, 'num'),
@@ -123,6 +132,7 @@ function orderRow(order) {
   );
 
   const select = document.createElement('select');
+  select.className = 'status ' + statusClass(order.status);
   for (const s of STATUS) {
     const opt = document.createElement('option');
     opt.value = opt.textContent = s;
@@ -192,7 +202,7 @@ $('order-form').addEventListener('submit', e => {
   if (existing) {
     Object.assign(existing, { nome, endereco, nutella, tradicional, taxa });
   } else {
-    state.orders.push({ id: Date.now(), nome, endereco, nutella, tradicional, taxa, status });
+    state.orders.push({ id: Date.now(), numero: state.nextNumber++, nome, endereco, nutella, tradicional, taxa, status });
   }
   save();
   resetForm();
@@ -256,7 +266,7 @@ function changeStatus(id, newStatus) {
 
 function removeOrder(id) {
   const order = state.orders.find(o => o.id === id);
-  if (!order || !confirm(`Excluir o pedido de ${order.nome}?`)) return;
+  if (!order || !confirm(`Excluir o pedido #${fmtNum(order.numero)} de ${order.nome}?`)) return;
   if (isActive(order)) {
     state.stock.nutella += order.nutella;
     state.stock.tradicional += order.tradicional;

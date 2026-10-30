@@ -8,7 +8,10 @@
 </head>
 <body>
 <main>
-  <h1>Pedidos de Cookies</h1>
+  <header class="app-header">
+    <h1>Pedidos de Cookies</h1>
+    <p>Controle de estoque e entregas</p>
+  </header>
 
   <section>
     <h2>Estoque disponível</h2>
@@ -62,6 +65,7 @@
       <table>
         <thead>
           <tr>
+            <th>#</th>
             <th>Nome</th>
             <th>Endereço</th>
             <th class="num">Nutella</th>
@@ -75,7 +79,7 @@
         <tbody id="orders"></tbody>
         <tfoot>
           <tr>
-            <td colspan="4">Totais (exceto cancelados)</td>
+            <td colspan="5">Totais (exceto cancelados)</td>
             <td class="num" id="total-taxas">R$ 0,00</td>
             <td class="num" id="total-geral">R$ 0,00</td>
             <td colspan="2"></td>
